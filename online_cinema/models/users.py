@@ -11,10 +11,9 @@ from sqlalchemy import (
     Enum,
     func
 )
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from online_cinema.models.base import Base
 
 
 class GroupEnum(enum.Enum):
