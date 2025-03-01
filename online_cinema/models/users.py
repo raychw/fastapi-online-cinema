@@ -61,12 +61,12 @@ class UserProfile(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    first_name = Column(String(100))
-    last_name = Column(String(100))
+    first_name = Column(String(100), nullable=True)
+    last_name = Column(String(100), nullable=True)
     avatar = Column(String(255), nullable=True)
     gender = Column(Enum(GenderEnum), nullable=True)
-    date_of_birth = Column(Date)
-    info = Column(Text)
+    date_of_birth = Column(Date, nullable=True)
+    info = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="profile")
 
