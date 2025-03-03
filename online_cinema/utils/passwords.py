@@ -1,3 +1,12 @@
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    bcrypt__rounds=14,
+    deprecated="auto"
+)
+
+
 def validate_password_strength(password: str) -> str:
     if not any(char.isdigit() for char in password):
         raise ValueError("Password must contain at least one digit.")
@@ -12,3 +21,7 @@ def check_password_match(password: str, confirm_password: str) -> str:
     if password != confirm_password:
         raise ValueError("Passwords do not match.")
     return confirm_password
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
