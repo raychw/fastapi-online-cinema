@@ -1,9 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./online_cinema.db"
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True, future=True, connect_args={"check_same_thread": False})
@@ -15,6 +14,7 @@ SessionLocal = sessionmaker(
     autoflush=False,
     future=True
 )
+
 
 async def get_db():
     async with SessionLocal() as session:
