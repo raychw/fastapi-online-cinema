@@ -6,6 +6,18 @@ from sqlalchemy import pool
 from alembic import context
 from online_cinema.database import Base
 
+from online_cinema.accounts.models import (
+    UserGroupEnum,
+    GenderEnum,
+    UserGroupModel,
+    UserModel,
+    UserProfileModel,
+    TokenBaseModel,
+    ActivationTokenModel,
+    PasswordResetTokenModel,
+    RefreshTokenModel
+)
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
