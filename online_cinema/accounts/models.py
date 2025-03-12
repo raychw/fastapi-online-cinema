@@ -18,13 +18,13 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
-    validates
+    validates,
 )
 
-from database import Base
-from security import validators
-from security.passwords import hash_password, verify_password
-from security.utils import generate_secure_token
+from online_cinema.database import Base
+from online_cinema.security import validators
+from online_cinema.security.passwords import hash_password, verify_password
+from online_cinema.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
