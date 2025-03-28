@@ -26,12 +26,28 @@ class UserRegistrationRequestSchema(BaseEmailPasswordSchema):
     pass
 
 
-class PasswordResetRequestSchema(BaseModel):
+class EmailInputRequestSchema(BaseModel):
     email: EmailStr
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class ResendActivationRequestSchema(EmailInputRequestSchema):
+    pass
+
+
+class PasswordResetRequestSchema(EmailInputRequestSchema):
+    pass
 
 
 class PasswordResetCompleteRequestSchema(BaseEmailPasswordSchema):
     token: str
+
+
+class PasswordChangeRequestSchema(BaseEmailPasswordSchema):
+    new_password: str
 
 
 class UserLoginRequestSchema(BaseEmailPasswordSchema):
@@ -69,3 +85,13 @@ class TokenRefreshRequestSchema(BaseModel):
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserAccountResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+
+    model_config = {
+        "from_attributes": True
+    }
