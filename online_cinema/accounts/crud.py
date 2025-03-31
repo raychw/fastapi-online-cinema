@@ -8,6 +8,7 @@ from online_cinema.accounts.models import (
     UserGroupEnum,
     ActivationTokenModel
 )
+from services.email import send_activation_email
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int):
@@ -47,5 +48,7 @@ async def create_user(db: AsyncSession, user_data: dict):
 
     await db.commit()
     await db.refresh(activation_token)
+
+    send_activation_email(str(new_user.email), activation_token.token)
 
     return new_user
