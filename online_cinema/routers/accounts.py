@@ -225,16 +225,16 @@ async def resend_activation(
         )
 
     try:
-        send_activation_email(str(user_data.email), existent_user.activation_token.token)
+        send_activation_email(str(existent_user.email), existent_user.activation_token.token)
+
+        return MessageResponseSchema(message="If the email is correct, "
+                                             "you will find a verification email in your inbox.")
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-    else:
-        return MessageResponseSchema(message="If the email is correct, "
-                                             "you will find a verification email in your inbox.")
 
 
 @router.post(

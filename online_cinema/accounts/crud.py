@@ -1,6 +1,7 @@
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
 from online_cinema.accounts.models import (
     UserModel,
@@ -24,7 +25,11 @@ async def get_list_of_users(db: AsyncSession, skip: int = 0, limit: int = 10):
 
 
 async def get_user_by_email(db: AsyncSession, email: EmailStr):
-    stmt = select(UserModel).where(UserModel.email == email)
+    stmt = (
+        select(UserModel)
+        .options(joinedload(UserModel.activation_token))  # Load relationship eagerly
+        .where(UserModel.email == email)
+    )
     result = await db.execute(stmt)
     return result.scalars().first()
 
