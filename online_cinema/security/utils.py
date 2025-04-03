@@ -1,11 +1,15 @@
 import os
 import secrets
-
 from datetime import datetime, timedelta
-from fastapi import HTTPException, Security
+from typing import List
+from fastapi import HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt
+from jose import jwt, JWTError
 from dotenv import load_dotenv
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+from database import get_db
 
 
 load_dotenv()
@@ -41,18 +45,51 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+async def get_current_user(
+        credentials: HTTPAuthorizationCredentials = Security(security),
+):
+    from online_cinema.accounts.models import UserModel
+
     token = credentials.credentials
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-
         user_id = payload.get("user_id")
+
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token: user_id missing")
 
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            raise HTTPException(status_code=401, detail="Invalid token: user_id must be an integer")
+
+        db_gen = get_db()
+        db = await anext(db_gen)
+
+        try:
+            result = await db.execute(
+                select(UserModel)
+                .options(selectinload(UserModel.group))
+                .filter(UserModel.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+
+            if user is None:
+                raise HTTPException(status_code=401, detail="User not found")
+
+            return user
+
+        finally:
+            await db_gen.aclose()
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def require_group(required_groups: List[str]):
+    async def group_dependency(user: dict = Depends(get_current_user)):
+        if user.group.name not in required_groups:
+            raise HTTPException(status_code=403, detail=f"You're not permitted to this action")
+        return user
+    return group_dependency
