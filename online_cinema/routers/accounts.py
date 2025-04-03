@@ -16,6 +16,7 @@ from security.utils import (
     create_access_token,
     create_refresh_token,
     get_current_user,
+    require_group,
 )
 from online_cinema.accounts.crud import (
     get_user_by_id,
@@ -42,6 +43,8 @@ from online_cinema.accounts.schemas import (
     PasswordResetCompleteRequestSchema,
     PasswordChangeRequestSchema,
     UserAccountResponseSchema,
+    UserAccountPatchRequestSchema,
+    UserAccountPatchResponseSchema,
 )
 
 
@@ -440,8 +443,8 @@ async def refresh_token(
     }
 )
 async def logout_user(
-    user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+        user=Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
 ):
     """
     Endpoint for user logout.
@@ -449,15 +452,16 @@ async def logout_user(
     """
     try:
         await db.execute(
-            delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user["user_id"])
+            delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
         )
         await db.commit()
         return MessageResponseSchema(message="User logged out successfully")
+
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            detail=f"Database error: {str(e)}"
         )
 
 
@@ -501,7 +505,10 @@ async def reset_password(
     user = await get_user_by_email(db, user_data.email)
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email."
+        )
 
     try:
         password_reset_token = PasswordResetTokenModel(user_id=user.id)
@@ -565,7 +572,10 @@ async def set_new_password(
     user = user.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token."
+        )
 
     try:
         user.password = user_data.password
@@ -594,7 +604,7 @@ async def set_new_password(
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Invalid password."
+                        "detail": "Old password is not correct."
                     }
                 }
             },
@@ -625,7 +635,10 @@ async def change_password(
     user = user.scalars().first()
 
     if not user.verify_password(user_data.password):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Old password is not correct."
+        )
 
     try:
         user.password = user_data.new_password
@@ -719,10 +732,77 @@ async def get_user(
     user = await get_user_by_id(db, user_id)
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
 
     try:
         return user
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.patch(
+    "/{user_id}/",
+    response_model=UserAccountPatchResponseSchema,
+    summary="Change user's data.",
+    description="Allows to change user's group or activate their account if you're an administrator.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        404: {
+            "description": "Not Found - User not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred during editing user's data.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during editing user's data."
+                    }
+                }
+            },
+        },
+    }
+)
+async def patch_user(
+    user_id: int,
+    account_data: UserAccountPatchRequestSchema,
+    user: UserModel = Depends(require_group(["admin"])),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get a user by ID and patch their data.
+    """
+
+    existent_user = await get_user_by_id(db, user_id)
+
+    if not existent_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    try:
+        existent_user.group_id = account_data.group_id
+        existent_user.is_active = account_data.is_active
+
+        db.add(existent_user)
+        await db.flush()
+        await db.commit()
+
+        return UserAccountPatchResponseSchema.model_validate(existent_user)
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
