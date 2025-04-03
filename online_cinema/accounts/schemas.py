@@ -96,3 +96,23 @@ class UserAccountResponseSchema(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+class UserAccountPatchRequestSchema(BaseModel):
+    group_id: int | None = None
+    is_active: bool | None = None
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class UserAccountPatchResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+    group_id: int | None = None
+    is_active: bool | None = None
+
+    model_config = {
+        "from_attributes": True
+    }
