@@ -140,3 +140,27 @@ async def test_register_user_with_existing_email(user):
     assert response.status_code == 409
     response_json = response.json()
     assert response_json["detail"] == "A user with this email already exists."
+
+
+@pytest.mark.anyio
+async def test_activate_user(inactive_user):
+    user, token = inactive_user
+
+    activation_data = {
+        "email": user.email,
+        "token": token,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/activate/", json=activation_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == "User account activated successfully."
+
+    async with SessionLocal() as session:
+        activated_user = await session.get(User, user.id)
+        assert activated_user.is_active is True
+
