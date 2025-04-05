@@ -64,3 +64,44 @@ async def test_get_user(user):
     response_json = response.json()
     assert response_json["id"] == user.id
     assert response_json["email"] == user.email
+
+
+@pytest.mark.anyio
+async def test_register_user():
+    new_user_data = {
+        "email": "dave@example.com",
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/register/", json=new_user_data)
+
+    assert response.status_code == 201
+    response_json = response.json()
+    assert response_json["email"] == new_user_data["email"]
+    assert "id" in response_json
+    assert "password" not in response_json
+
+    async with SessionLocal() as session:
+        new_user = await session.get(User, response_json["id"])
+        await session.delete(new_user)
+        await session.commit()
+
+
+@pytest.mark.anyio
+async def test_register_user_with_existing_email(user):
+    existing_user_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/register/", json=existing_user_data)
+
+    assert response.status_code == 409
+    response_json = response.json()
+    assert response_json["detail"] == "A user with this email already exists."
