@@ -1,8 +1,10 @@
 import pytest
+from datetime import datetime, timedelta
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from online_cinema.main import app
-from online_cinema.accounts.models import ActivationTokenModel, UserModel as User
+from online_cinema.accounts.models import RefreshTokenModel, ActivationTokenModel, UserModel as User
 from online_cinema.database import SessionLocal
 from online_cinema.security.passwords import hash_password
 
@@ -273,3 +275,104 @@ async def test_user_login_invalid_credentials(user):
     assert response.status_code == 401
     response_json = response.json()
     assert response_json["detail"] == "Invalid credentials."
+
+
+@pytest.mark.anyio
+async def test_refresh_token_success(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    refresh_token = response_json["refresh_token"]
+
+    refresh_data = {
+        "refresh_token": refresh_token
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert "access_token" in response_json
+    assert "token_type" in response_json
+    assert response_json["token_type"] == "bearer"
+
+
+@pytest.mark.anyio
+async def test_refresh_token_invalid_token(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+
+    refresh_data = {
+        "refresh_token": "invalid_refresh_token"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+
+    assert response.status_code == 401
+    response_json = response.json()
+    assert response_json["detail"] == "Invalid refresh token."
+
+
+@pytest.mark.anyio
+async def test_refresh_token_expired_token(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    refresh_token = response_json["refresh_token"]
+
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token)
+        )
+        token_record = result.scalar_one_or_none()
+
+        assert token_record is not None, "Refresh token not found in the database"
+
+        token_record.expires_at = datetime.now() - timedelta(days=1)
+        await session.commit()
+
+    refresh_data = {
+        "refresh_token": refresh_token
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+
+    assert response.status_code == 403
+    response_json = response.json()
+    assert response_json["detail"] == "Refresh token is expired or revoked."
