@@ -28,6 +28,7 @@ from online_cinema.accounts.models import (
     RefreshTokenModel,
     UserModel,
     PasswordResetTokenModel,
+    ActivationTokenModel,
 )
 from online_cinema.accounts.schemas import (
     UserRegistrationRequestSchema,
@@ -192,7 +193,7 @@ async def activate_user(
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Invalid email."
+                        "detail": "Invalid email or account is already activated."
                     }
                 }
             },
@@ -221,11 +222,18 @@ async def resend_activation(
 
     existent_user = await get_user_by_email(db, user_data.email)
 
-    if not existent_user:
+    if not existent_user or existent_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email."
+            detail="Invalid email or account is already activated."
         )
+
+    if not existent_user.activation_token.token:
+        activation_token = ActivationTokenModel(user_id=existent_user.id)
+        db.add(activation_token)
+
+        await db.commit()
+        await db.refresh(activation_token)
 
     try:
         send_activation_email(str(existent_user.email), existent_user.activation_token.token)
