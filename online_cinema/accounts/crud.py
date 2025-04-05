@@ -27,7 +27,7 @@ async def get_list_of_users(db: AsyncSession, skip: int = 0, limit: int = 10):
 async def get_user_by_email(db: AsyncSession, email: EmailStr):
     stmt = (
         select(UserModel)
-        .options(joinedload(UserModel.activation_token))  # Load relationship eagerly
+        .options(joinedload(UserModel.activation_token))
         .where(UserModel.email == email)
     )
     result = await db.execute(stmt)
