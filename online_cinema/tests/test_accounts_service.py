@@ -23,6 +23,24 @@ async def user_list():
         await session.commit()
 
 
+@pytest.fixture
+async def user():
+    async with SessionLocal() as session:
+        user = User(
+            id=1,
+            email="joanne@example.com",
+            group_id=1,
+            _hashed_password="hashedpassword",
+        )
+        session.add(user)
+        await session.commit()
+
+        yield user
+
+        await session.delete(user)
+        await session.commit()
+
+
 @pytest.mark.anyio
 async def test_get_users_list(user_list):
     async with AsyncClient(
@@ -34,3 +52,15 @@ async def test_get_users_list(user_list):
     assert len(response_json) == len(user_list)
     for user in user_list:
         assert any(u["id"] == user.id and u["email"] == user.email for u in response_json)
+
+
+@pytest.mark.anyio
+async def test_get_user(user):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.get(f"api/v1/accounts/{user.id}/")
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["id"] == user.id
+    assert response_json["email"] == user.email
