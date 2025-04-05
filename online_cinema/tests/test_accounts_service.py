@@ -239,3 +239,37 @@ async def test_user_login(user):
     assert "access_token" in response_json
     assert "token_type" in response_json
     assert response_json["token_type"] == "bearer"
+
+
+@pytest.mark.anyio
+async def test_user_login_with_inactive_account(inactive_user):
+    login_data = {
+        "email": inactive_user[0].email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 403
+    response_json = response.json()
+    assert response_json["detail"] == "User account is not activated."
+
+
+@pytest.mark.anyio
+async def test_user_login_invalid_credentials(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!1"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 401
+    response_json = response.json()
+    assert response_json["detail"] == "Invalid credentials."
