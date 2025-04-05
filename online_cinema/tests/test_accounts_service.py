@@ -198,3 +198,21 @@ async def test_resend_activation_to_invalid_email():
     response_json = response.json()
     assert response_json["detail"] == "Invalid email or account is already activated."
 
+
+@pytest.mark.anyio
+async def test_user_login(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert "access_token" in response_json
+    assert "token_type" in response_json
+    assert response_json["token_type"] == "bearer"
