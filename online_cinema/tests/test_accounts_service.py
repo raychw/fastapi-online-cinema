@@ -2,8 +2,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from online_cinema.main import app
-from online_cinema.accounts.models import UserModel as User
+from online_cinema.accounts.models import ActivationTokenModel, UserModel as User
 from online_cinema.database import SessionLocal
+from online_cinema.security.passwords import hash_password
 
 
 @pytest.fixture
@@ -30,12 +31,46 @@ async def user():
             id=1,
             email="joanne@example.com",
             group_id=1,
-            _hashed_password="hashedpassword",
+            _hashed_password=hash_password("strSTR!0"),
+            is_active=True,
         )
         session.add(user)
+        await session.flush()
+
+        activation_token = ActivationTokenModel(
+            user_id=user.id,
+        )
+        session.add(activation_token)
         await session.commit()
+        await session.refresh(user)
 
         yield user
+
+        await session.delete(user)
+        await session.commit()
+
+
+@pytest.fixture
+async def inactive_user():
+    async with SessionLocal() as session:
+        user = User(
+            id=2,
+            email="inactive@example.com",
+            group_id=1,
+            _hashed_password=hash_password("strSTR!0"),
+            is_active=False,
+        )
+        session.add(user)
+        await session.flush()
+
+        activation_token = ActivationTokenModel(
+            user_id=user.id,
+        )
+        session.add(activation_token)
+        await session.commit()
+        await session.refresh(user)
+
+        yield user, activation_token.token
 
         await session.delete(user)
         await session.commit()
