@@ -164,3 +164,37 @@ async def test_activate_user(inactive_user):
         activated_user = await session.get(User, user.id)
         assert activated_user.is_active is True
 
+
+@pytest.mark.anyio
+async def test_resend_activation_email(inactive_user):
+    user, token = inactive_user
+
+    resend_data = {
+        "email": user.email,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/resend-verification/", json=resend_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == ("If the email is correct, "
+                                        "you will find a verification email in your inbox.")
+
+
+@pytest.mark.anyio
+async def test_resend_activation_to_invalid_email():
+    resend_data = {
+        "email": "invalid_email_data@email.com"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/resend-verification/", json=resend_data)
+    assert response.status_code == 400
+    response_json = response.json()
+    assert response_json["detail"] == "Invalid email or account is already activated."
+
