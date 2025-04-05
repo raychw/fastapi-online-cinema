@@ -166,6 +166,29 @@ async def test_activate_user(inactive_user):
 
 
 @pytest.mark.anyio
+async def test_activate_user_invalid_data(inactive_user):
+    user, token = inactive_user
+
+    invalid_activation_data = {
+        "email": user.email,
+        "token": "invalid_token",
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/activate/", json=invalid_activation_data)
+
+    assert response.status_code == 400
+    response_json = response.json()
+    assert response_json["detail"] == "Invalid token or email."
+
+    async with SessionLocal() as session:
+        not_activated_user = await session.get(User, user.id)
+        assert not_activated_user.is_active is False
+
+
+@pytest.mark.anyio
 async def test_resend_activation_email(inactive_user):
     user, token = inactive_user
 
