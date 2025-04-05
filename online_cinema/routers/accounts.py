@@ -8,11 +8,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette import status
 
 from online_cinema.database import get_db
-from services.email import (
+from online_cinema.services.email import (
     send_activation_email,
     send_password_reset_email,
 )
-from security.utils import (
+from online_cinema.security.utils import (
     create_access_token,
     create_refresh_token,
     get_current_user,

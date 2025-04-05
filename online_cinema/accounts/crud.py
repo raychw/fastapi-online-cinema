@@ -9,7 +9,7 @@ from online_cinema.accounts.models import (
     UserGroupEnum,
     ActivationTokenModel
 )
-from services.email import send_activation_email
+from online_cinema.services.email import send_activation_email
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int):

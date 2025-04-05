@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from database import get_db
+from online_cinema.database import get_db
 
 
 load_dotenv()
