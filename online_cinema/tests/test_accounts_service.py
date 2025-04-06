@@ -376,3 +376,34 @@ async def test_refresh_token_expired_token(user):
     assert response.status_code == 403
     response_json = response.json()
     assert response_json["detail"] == "Refresh token is expired or revoked."
+
+
+@pytest.mark.anyio
+async def test_logout_user(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        login_response = await ac.post("/api/v1/accounts/login/", json=login_data)
+        assert login_response.status_code == 200
+        tokens = login_response.json()
+        assert "access_token" in tokens
+        access_token = tokens["access_token"]
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        logout_response = await ac.post(
+            "/api/v1/accounts/logout/",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+    assert logout_response.status_code == 200
+    assert logout_response.json()["message"] == "User logged out successfully"
+
+    async with SessionLocal() as session:
+        user = await session.scalar(select(User).where(User.email == login_data["email"]))
+        tokens_exist = await session.scalar(
+            select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+        )
+        assert tokens_exist is None
