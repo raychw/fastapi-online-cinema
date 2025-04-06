@@ -443,3 +443,73 @@ async def test_reset_password_invalid_email(user):
     response_json = response.json()
     assert response_json["detail"] == "Invalid email."
 
+
+@pytest.mark.anyio
+async def test_set_new_password(user):
+    reset_data = {
+        "email": user.email,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+
+    async with SessionLocal() as session:
+
+        user = await session.get(User, user.id)
+        await session.refresh(user, ["password_reset_token"])
+
+        set_new_password_data = {
+            "email": user.email,
+            "password": "strSTR!123",
+            "token": user.password_reset_token.token,
+        }
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
+            response = await ac.post("api/v1/accounts/set-new-password/", json=set_new_password_data)
+
+        assert response.status_code == 200
+        response_json = response.json()
+        assert response_json["message"] == "New password was set successfully. You may now log in."
+
+
+@pytest.mark.anyio
+async def test_set_new_password_invalid_token(user):
+    reset_data = {
+        "email": user.email,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+
+    async with SessionLocal() as session:
+        user = await session.get(User, user.id)
+        await session.refresh(user, ["password_reset_token"])
+
+        set_new_password_data = {
+            "email": user.email,
+            "password": "strSTR!123",
+            "token": "invalid_token",
+        }
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
+            response = await ac.post("api/v1/accounts/set-new-password/", json=set_new_password_data)
+
+        assert response.status_code == 400
+        response_json = response.json()
+        assert response_json["detail"] == "Invalid token."
