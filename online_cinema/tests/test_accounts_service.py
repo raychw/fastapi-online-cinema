@@ -513,3 +513,77 @@ async def test_set_new_password_invalid_token(user):
         assert response.status_code == 400
         response_json = response.json()
         assert response_json["detail"] == "Invalid token."
+
+
+@pytest.mark.anyio
+async def test_change_password(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+
+    change_password_data = {
+        "email": user.email,
+        "password": "strSTR!0",
+        "new_password": "new_strSTR!123"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "api/v1/accounts/change-password/",
+            json=change_password_data
+        )
+
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == "Password was changed successfully."
+
+    login_data["password"] = change_password_data["new_password"]
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_change_password_wrong_password(user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+
+    change_password_data = {
+        "email": user.email,
+        "password": "strSTR!000",
+        "new_password": "new_strSTR!123"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "api/v1/accounts/change-password/",
+            json=change_password_data
+        )
+
+    assert response.status_code == 400
+    response_json = response.json()
+    assert response_json["detail"] == "Old password is not correct."
