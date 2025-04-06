@@ -534,7 +534,8 @@ async def reset_password(
             detail=str(e)
         )
     else:
-        return MessageResponseSchema(message="If the email is correct, you'll get a password reset token.")
+        return MessageResponseSchema(message="If the email is correct, "
+                                             "you will find a reset password email in your inbox.")
 
 
 @router.post(
