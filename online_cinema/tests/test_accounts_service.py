@@ -407,3 +407,33 @@ async def test_logout_user(user):
             select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
         )
         assert tokens_exist is None
+
+
+@pytest.mark.anyio
+async def test_reset_password(user):
+    reset_data = {
+        "email": user.email,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+
+
+@pytest.mark.anyio
+async def test_reset_password_invalid_email(user):
+    reset_data = {
+        "email": "wrongemail@test.com",
+    }
+
+    async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+    assert response.status_code == 400
+    response_json = response.json()
+    assert response_json["detail"] == "Invalid email."
