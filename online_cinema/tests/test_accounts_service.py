@@ -613,3 +613,99 @@ async def test_change_password_wrong_password(user):
     assert response.status_code == 400
     response_json = response.json()
     assert response_json["detail"] == "Old password is not correct."
+
+
+@pytest.mark.anyio
+async def test_patch_existing_user(admin_user, inactive_user):
+    login_data = {
+        "email": admin_user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    token = response_json["access_token"]
+
+    patch_data = {
+        "group_id": 2,
+        "is_active": True,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+    ) as ac:
+        response = await ac.patch(f"api/v1/accounts/{inactive_user[0].id}/", json=patch_data)
+    assert response.status_code == 200
+    response_json = response.json()
+    assert response_json["id"] == inactive_user[0].id
+    assert response_json["email"] == inactive_user[0].email
+    assert response_json["group_id"] == patch_data["group_id"]
+    assert response_json["is_active"] == patch_data["is_active"]
+
+
+@pytest.mark.anyio
+async def test_patch_not_existing_user(admin_user):
+    login_data = {
+        "email": admin_user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    token = response_json["access_token"]
+
+    patch_data = {
+        "group_id": 2,
+        "is_active": True,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+    ) as ac:
+        response = await ac.patch("api/v1/accounts/999/", json=patch_data)
+    assert response.status_code == 404
+    response_json = response.json()
+    assert response_json["detail"] == "User not found."
+
+
+@pytest.mark.anyio
+async def test_patch_no_permission(user, inactive_user):
+    login_data = {
+        "email": user.email,
+        "password": "strSTR!0"
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("api/v1/accounts/login/", json=login_data)
+
+    assert response.status_code == 200
+    response_json = response.json()
+
+    token = response_json["access_token"]
+
+    patch_data = {
+        "group_id": 2,
+        "is_active": True,
+    }
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+    ) as ac:
+        response = await ac.patch(f"api/v1/accounts/{inactive_user[0].id}/", json=patch_data)
+    assert response.status_code == 403
+    response_json = response.json()
+    assert response_json["detail"] == "You're not permitted to this action"
