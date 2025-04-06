@@ -4,7 +4,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
 from online_cinema.main import app
-from online_cinema.accounts.models import RefreshTokenModel, ActivationTokenModel, UserModel as User
+from online_cinema.accounts.models import (
+    RefreshTokenModel,
+    ActivationTokenModel,
+    UserModel as User
+)
 from online_cinema.database import SessionLocal
 from online_cinema.security.passwords import hash_password
 
@@ -13,8 +17,18 @@ from online_cinema.security.passwords import hash_password
 async def user_list():
     async with SessionLocal() as session:
         users = [
-            User(id=1, email="alice@example.com", group_id=1, _hashed_password="hashedpassword1"),
-            User(id=2, email="bob@example.com", group_id=1, _hashed_password="hashedpassword2"),
+            User(
+                id=1,
+                email="alice@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword1"
+            ),
+            User(
+                id=2,
+                email="bob@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword2"
+            ),
         ]
         session.add_all(users)
         await session.commit()
@@ -114,7 +128,11 @@ async def test_get_users_list(user_list):
     response_json = response.json()
     assert len(response_json) == len(user_list)
     for user in user_list:
-        assert any(u["id"] == user.id and u["email"] == user.email for u in response_json)
+        assert any(
+            u["id"] == user.id
+            and u["email"] == user.email
+            for u in response_json
+        )
 
 
 @pytest.mark.anyio
@@ -139,7 +157,10 @@ async def test_register_user():
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/register/", json=new_user_data)
+        response = await ac.post(
+            "api/v1/accounts/register/",
+            json=new_user_data
+        )
 
     assert response.status_code == 201
     response_json = response.json()
@@ -163,7 +184,10 @@ async def test_register_user_with_existing_email(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/register/", json=existing_user_data)
+        response = await ac.post(
+            "api/v1/accounts/register/",
+            json=existing_user_data
+        )
 
     assert response.status_code == 409
     response_json = response.json()
@@ -182,7 +206,10 @@ async def test_activate_user(inactive_user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/activate/", json=activation_data)
+        response = await ac.post(
+            "api/v1/accounts/activate/",
+            json=activation_data
+        )
 
     assert response.status_code == 200
     response_json = response.json()
@@ -205,7 +232,10 @@ async def test_activate_user_invalid_data(inactive_user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/activate/", json=invalid_activation_data)
+        response = await ac.post(
+            "api/v1/accounts/activate/",
+            json=invalid_activation_data
+        )
 
     assert response.status_code == 400
     response_json = response.json()
@@ -227,12 +257,17 @@ async def test_resend_activation_email(inactive_user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/resend-verification/", json=resend_data)
+        response = await ac.post(
+            "api/v1/accounts/resend-verification/",
+            json=resend_data
+        )
 
     assert response.status_code == 200
     response_json = response.json()
-    assert response_json["message"] == ("If the email is correct, "
-                                        "you will find a verification email in your inbox.")
+    assert response_json["message"] == (
+        "If the email is correct, "
+        "you will find a verification email in your inbox."
+    )
 
 
 @pytest.mark.anyio
@@ -244,10 +279,15 @@ async def test_resend_activation_to_invalid_email():
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/resend-verification/", json=resend_data)
+        response = await ac.post(
+            "api/v1/accounts/resend-verification/",
+            json=resend_data
+        )
     assert response.status_code == 400
     response_json = response.json()
-    assert response_json["detail"] == "Invalid email or account is already activated."
+    assert response_json["detail"] == (
+        "Invalid email or account is already activated."
+    )
 
 
 @pytest.mark.anyio
@@ -326,7 +366,10 @@ async def test_refresh_token_success(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+        response = await ac.post(
+            "api/v1/accounts/refresh-token/",
+            json=refresh_data
+        )
 
     assert response.status_code == 200
     response_json = response.json()
@@ -356,7 +399,10 @@ async def test_refresh_token_invalid_token(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+        response = await ac.post(
+            "api/v1/accounts/refresh-token/",
+            json=refresh_data
+        )
 
     assert response.status_code == 401
     response_json = response.json()
@@ -381,11 +427,15 @@ async def test_refresh_token_expired_token(user):
 
     async with SessionLocal() as session:
         result = await session.execute(
-            select(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token)
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.token == refresh_token
+            )
         )
         token_record = result.scalar_one_or_none()
 
-        assert token_record is not None, "Refresh token not found in the database"
+        assert token_record is not None, (
+            "Refresh token not found in the database"
+        )
 
         token_record.expires_at = datetime.now() - timedelta(days=1)
         await session.commit()
@@ -397,7 +447,10 @@ async def test_refresh_token_expired_token(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/refresh-token/", json=refresh_data)
+        response = await ac.post(
+            "api/v1/accounts/refresh-token/",
+            json=refresh_data
+        )
 
     assert response.status_code == 403
     response_json = response.json()
@@ -411,14 +464,21 @@ async def test_logout_user(user):
         "password": "strSTR!0"
     }
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        login_response = await ac.post("/api/v1/accounts/login/", json=login_data)
+    async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        login_response = await ac.post(
+            "/api/v1/accounts/login/",
+            json=login_data
+        )
         assert login_response.status_code == 200
         tokens = login_response.json()
         assert "access_token" in tokens
         access_token = tokens["access_token"]
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         logout_response = await ac.post(
             "/api/v1/accounts/logout/",
             headers={"Authorization": f"Bearer {access_token}"}
@@ -428,9 +488,14 @@ async def test_logout_user(user):
     assert logout_response.json()["message"] == "User logged out successfully"
 
     async with SessionLocal() as session:
-        user = await session.scalar(select(User).where(User.email == login_data["email"]))
+        user = await session.scalar(select(User).where(
+            User.email == login_data["email"]
+        )
+        )
         tokens_exist = await session.scalar(
-            select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.user_id == user.id
+            )
         )
         assert tokens_exist is None
 
@@ -444,10 +509,16 @@ async def test_reset_password(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+        response = await ac.post(
+            "api/v1/accounts/reset-password/",
+            json=reset_data
+        )
     assert response.status_code == 200
     response_json = response.json()
-    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+    assert response_json["message"] == (
+        "If the email is correct, "
+        "you will find a reset password email in your inbox."
+    )
 
     async with SessionLocal() as session:
         user_in_db = await session.get(User, user.id)
@@ -464,7 +535,10 @@ async def test_reset_password_invalid_email(user):
     async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+        response = await ac.post(
+            "api/v1/accounts/reset-password/",
+            json=reset_data
+        )
     assert response.status_code == 400
     response_json = response.json()
     assert response_json["detail"] == "Invalid email."
@@ -479,11 +553,17 @@ async def test_set_new_password(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+        response = await ac.post(
+            "api/v1/accounts/reset-password/",
+            json=reset_data
+        )
 
     assert response.status_code == 200
     response_json = response.json()
-    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+    assert response_json["message"] == (
+        "If the email is correct, "
+        "you will find a reset password email in your inbox."
+    )
 
     async with SessionLocal() as session:
 
@@ -499,11 +579,16 @@ async def test_set_new_password(user):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as ac:
-            response = await ac.post("api/v1/accounts/set-new-password/", json=set_new_password_data)
+            response = await ac.post(
+                "api/v1/accounts/set-new-password/",
+                json=set_new_password_data
+            )
 
         assert response.status_code == 200
         response_json = response.json()
-        assert response_json["message"] == "New password was set successfully. You may now log in."
+        assert response_json["message"] == (
+            "New password was set successfully. You may now log in."
+        )
 
 
 @pytest.mark.anyio
@@ -515,11 +600,17 @@ async def test_set_new_password_invalid_token(user):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.post("api/v1/accounts/reset-password/", json=reset_data)
+        response = await ac.post(
+            "api/v1/accounts/reset-password/",
+            json=reset_data
+        )
 
     assert response.status_code == 200
     response_json = response.json()
-    assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
+    assert response_json["message"] == (
+        "If the email is correct, "
+        "you will find a reset password email in your inbox."
+    )
 
     async with SessionLocal() as session:
         user = await session.get(User, user.id)
@@ -534,7 +625,10 @@ async def test_set_new_password_invalid_token(user):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as ac:
-            response = await ac.post("api/v1/accounts/set-new-password/", json=set_new_password_data)
+            response = await ac.post(
+                "api/v1/accounts/set-new-password/",
+                json=set_new_password_data
+            )
 
         assert response.status_code == 400
         response_json = response.json()
@@ -638,9 +732,14 @@ async def test_patch_existing_user(admin_user, inactive_user):
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+        transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token}"}
     ) as ac:
-        response = await ac.patch(f"api/v1/accounts/{inactive_user[0].id}/", json=patch_data)
+        response = await ac.patch(
+            f"api/v1/accounts/{inactive_user[0].id}/",
+            json=patch_data
+        )
     assert response.status_code == 200
     response_json = response.json()
     assert response_json["id"] == inactive_user[0].id
@@ -672,7 +771,9 @@ async def test_patch_not_existing_user(admin_user):
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+        transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token}"}
     ) as ac:
         response = await ac.patch("api/v1/accounts/999/", json=patch_data)
     assert response.status_code == 404
@@ -703,9 +804,14 @@ async def test_patch_no_permission(user, inactive_user):
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test", headers={"Authorization": f"Bearer {token}"}
+        transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Authorization": f"Bearer {token}"}
     ) as ac:
-        response = await ac.patch(f"api/v1/accounts/{inactive_user[0].id}/", json=patch_data)
+        response = await ac.patch(
+            f"api/v1/accounts/{inactive_user[0].id}/",
+            json=patch_data
+        )
     assert response.status_code == 403
     response_json = response.json()
     assert response_json["detail"] == "You're not permitted to this action"

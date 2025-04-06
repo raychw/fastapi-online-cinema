@@ -63,7 +63,8 @@ class UserLoginResponseSchema(BaseModel):
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
-    message: str = "User registered successfully. Please check your email to activate your account."
+    message: str = ("User registered successfully. "
+                    "Please check your email to activate your account.")
 
     model_config = {
         "from_attributes": True

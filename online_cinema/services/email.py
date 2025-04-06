@@ -36,7 +36,8 @@ def send_email(subject: str, to_email: str, content: str):
 
 def send_activation_email(to_email: str, activation_token: str):
     subject = "Activate Your Account"
-    content = f"Use the following token to activate your account: {activation_token}"
+    content = (f"Use the following token "
+               f"to activate your account: {activation_token}")
     send_email(subject, to_email, content)
 
 

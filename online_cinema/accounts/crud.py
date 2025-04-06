@@ -35,7 +35,9 @@ async def get_user_by_email(db: AsyncSession, email: EmailStr):
 
 
 async def create_user(db: AsyncSession, user_data: dict):
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db.execute(stmt)
     user_group = result.scalar()
 

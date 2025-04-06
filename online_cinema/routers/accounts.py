@@ -70,7 +70,9 @@ router = APIRouter()
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during user creation.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during user creation.",
             "content": {
                 "application/json": {
                     "example": {
@@ -88,7 +90,8 @@ async def register_user(
     """
     Endpoint for user registration.
 
-    Validates user password and email. Hashes the password and stores the user in the database.
+    Validates user password and email.
+    Hashes the password and stores the user in the database.
     Assigns a user group and generates an activation token.
 
     Sends a verification email to the user with the activation token.
@@ -135,7 +138,9 @@ async def register_user(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during activation.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during activation.",
             "content": {
                 "application/json": {
                     "example": {
@@ -153,7 +158,8 @@ async def activate_user(
     """
     Endpoint for user account activation.
 
-    Validates the activation token and email. If valid, activates the user account.
+    Validates the activation token and email.
+    If valid, activates the user account.
     """
 
     user = await get_user_by_email(db, user_data.email)
@@ -172,7 +178,9 @@ async def activate_user(
         await db.flush()
         await db.commit()
 
-        return MessageResponseSchema(message="User account activated successfully.")
+        return MessageResponseSchema(
+            message="User account activated successfully."
+        )
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -193,13 +201,16 @@ async def activate_user(
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "Invalid email or account is already activated."
+                        "detail":
+                            "Invalid email or account is already activated."
                     }
                 }
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during email sending.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during email sending.",
             "content": {
                 "application/json": {
                     "example": {
@@ -217,7 +228,8 @@ async def resend_activation(
     """
     Endpoint to resend the activation email.
 
-    Validates the email and checks if the user exists. If valid, sends a new activation email.
+    Validates the email and checks if the user exists.
+    If valid, sends a new activation email.
     """
 
     existent_user = await get_user_by_email(db, user_data.email)
@@ -236,10 +248,15 @@ async def resend_activation(
         await db.refresh(activation_token)
 
     try:
-        send_activation_email(str(existent_user.email), existent_user.activation_token.token)
+        send_activation_email(
+            str(existent_user.email),
+            existent_user.activation_token.token
+        )
 
-        return MessageResponseSchema(message="If the email is correct, "
-                                             "you will find a verification email in your inbox.")
+        return MessageResponseSchema(
+            message="If the email is correct, "
+                    "you will find a verification email in your inbox."
+        )
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -276,7 +293,9 @@ async def resend_activation(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during login.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during login.",
             "content": {
                 "application/json": {
                     "example": {
@@ -294,7 +313,8 @@ async def login_user(
     """
     Endpoint for user login.
 
-    Validates user credentials (email and password). If valid, issues access and refresh JWT tokens.
+    Validates user credentials (email and password).
+    If valid, issues access and refresh JWT tokens.
     """
 
     user = await get_user_by_email(db, user_data.email)
@@ -313,10 +333,10 @@ async def login_user(
 
     try:
         jwt_refresh_token = create_refresh_token(
-        {
-            "sub": user.email,
-            "user_id": user.id
-        }
+            {
+                "sub": user.email,
+                "user_id": user.id
+            }
         )
 
         new_refresh_token = RefreshTokenModel.create(
@@ -376,7 +396,9 @@ async def login_user(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during token refresh.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during token refresh.",
             "content": {
                 "application/json": {
                     "example": {
@@ -399,15 +421,23 @@ async def refresh_token(
 
     try:
         jwt_refresh_token = await db.execute(
-            select(RefreshTokenModel).where(RefreshTokenModel.token == token_data.refresh_token)
+            select(RefreshTokenModel).where(
+                RefreshTokenModel.token == token_data.refresh_token
+            )
         )
         jwt_refresh_token = jwt_refresh_token.scalars().first()
 
         if not jwt_refresh_token:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token."
+            )
 
         if jwt_refresh_token.expires_at < datetime.now():
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Refresh token is expired or revoked.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Refresh token is expired or revoked."
+            )
 
         user = await db.execute(
             select(UserModel).where(UserModel.id == jwt_refresh_token.user_id)
@@ -415,7 +445,10 @@ async def refresh_token(
         user = user.scalars().first()
 
         if not user:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User not found."
+            )
 
         new_access_token = create_access_token({"sub": user.email})
 
@@ -439,7 +472,9 @@ async def refresh_token(
     status_code=status.HTTP_200_OK,
     responses={
         500: {
-            "description": "Internal Server Error - An error occurred during logout.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during logout.",
             "content": {
                 "application/json": {
                     "example": {
@@ -460,7 +495,9 @@ async def logout_user(
     """
     try:
         await db.execute(
-            delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+            delete(RefreshTokenModel).where(
+                RefreshTokenModel.user_id == user.id
+            )
         )
         await db.commit()
         return MessageResponseSchema(message="User logged out successfully")
@@ -491,7 +528,9 @@ async def logout_user(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during password reset.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during password reset.",
             "content": {
                 "application/json": {
                     "example": {
@@ -526,7 +565,10 @@ async def reset_password(
         await db.commit()
         await db.refresh(password_reset_token)
 
-        send_password_reset_email(str(user_data.email), password_reset_token.token)
+        send_password_reset_email(
+            str(user_data.email),
+            password_reset_token.token
+        )
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -534,8 +576,10 @@ async def reset_password(
             detail=str(e)
         )
     else:
-        return MessageResponseSchema(message="If the email is correct, "
-                                             "you will find a reset password email in your inbox.")
+        return MessageResponseSchema(
+            message="If the email is correct, "
+                    "you will find a reset password email in your inbox."
+        )
 
 
 @router.post(
@@ -556,7 +600,9 @@ async def reset_password(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during password reset.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during password reset.",
             "content": {
                 "application/json": {
                     "example": {
@@ -576,7 +622,11 @@ async def set_new_password(
     """
 
     user = await db.execute(
-        select(UserModel).where(UserModel.password_reset_token.has(PasswordResetTokenModel.token == user_data.token))
+        select(UserModel).where(
+            UserModel.password_reset_token.has(
+                PasswordResetTokenModel.token == user_data.token
+            )
+        )
     )
     user = user.scalars().first()
 
@@ -592,7 +642,9 @@ async def set_new_password(
         await db.flush()
         await db.commit()
 
-        return MessageResponseSchema(message="New password was set successfully. You may now log in.")
+        return MessageResponseSchema(
+            message="New password was set successfully. You may now log in."
+        )
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -619,7 +671,9 @@ async def set_new_password(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during password change.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during password change.",
             "content": {
                 "application/json": {
                     "example": {
@@ -655,7 +709,9 @@ async def change_password(
         await db.flush()
         await db.commit()
 
-        return MessageResponseSchema(message="Password was changed successfully.")
+        return MessageResponseSchema(
+            message="Password was changed successfully."
+        )
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -672,7 +728,9 @@ async def change_password(
     status_code=status.HTTP_200_OK,
     responses={
         500: {
-            "description": "Internal Server Error - An error occurred during fetching users.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during fetching users.",
             "content": {
                 "application/json": {
                     "example": {
@@ -692,7 +750,9 @@ async def get_users(
 
     try:
         users = await get_list_of_users(db)
-        return [UserAccountResponseSchema.model_validate(user) for user in users]
+        return [
+            UserAccountResponseSchema.model_validate(user) for user in users
+        ]
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -719,7 +779,9 @@ async def get_users(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during fetching user.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during fetching user.",
             "content": {
                 "application/json": {
                     "example": {
@@ -760,7 +822,8 @@ async def get_user(
     "/{user_id}/",
     response_model=UserAccountPatchResponseSchema,
     summary="Change user's data.",
-    description="Allows to change user's group or activate their account if you're an administrator.",
+    description="Allows to change user's group or activate their account "
+                "if you're an administrator.",
     status_code=status.HTTP_200_OK,
     responses={
         404: {
@@ -774,11 +837,14 @@ async def get_user(
             },
         },
         500: {
-            "description": "Internal Server Error - An error occurred during editing user's data.",
+            "description":
+                "Internal Server Error - "
+                "An error occurred during editing user's data.",
             "content": {
                 "application/json": {
                     "example": {
-                        "detail": "An error occurred during editing user's data."
+                        "detail":
+                            "An error occurred during editing user's data."
                     }
                 }
             },

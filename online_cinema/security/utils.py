@@ -27,7 +27,10 @@ def generate_secure_token(length: int = 32) -> str:
     return secrets.token_urlsafe(length)
 
 
-def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1)):
+def create_access_token(
+        data: dict,
+        expires_delta: timedelta = timedelta(hours=1)
+):
     to_encode = data.copy()
     expire = datetime.now() + expires_delta
     to_encode.update({"exp": expire})
@@ -35,7 +38,10 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
     return encoded_jwt
 
 
-def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_refresh_token(
+        data: dict,
+        expires_delta: timedelta | None = None
+) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now() + expires_delta
@@ -57,12 +63,18 @@ async def get_current_user(
         user_id = payload.get("user_id")
 
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token: user_id missing")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token: user_id missing"
+            )
 
         try:
             user_id = int(user_id)
         except ValueError:
-            raise HTTPException(status_code=401, detail="Invalid token: user_id must be an integer")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token: user_id must be an integer"
+            )
 
         db_gen = get_db()
         db = await anext(db_gen)
@@ -90,6 +102,9 @@ async def get_current_user(
 def require_group(required_groups: List[str]):
     async def group_dependency(user: dict = Depends(get_current_user)):
         if user.group.name not in required_groups:
-            raise HTTPException(status_code=403, detail=f"You're not permitted to this action")
+            raise HTTPException(
+                status_code=403,
+                detail="You're not permitted to this action"
+            )
         return user
     return group_dependency
