@@ -78,6 +78,32 @@ async def inactive_user():
         await session.commit()
 
 
+@pytest.fixture
+async def admin_user():
+    async with SessionLocal() as session:
+        user = User(
+            id=3,
+            email="admin@example.com",
+            group_id=3,
+            _hashed_password=hash_password("strSTR!0"),
+            is_active=True,
+        )
+        session.add(user)
+        await session.flush()
+
+        activation_token = ActivationTokenModel(
+            user_id=user.id,
+        )
+        session.add(activation_token)
+        await session.commit()
+        await session.refresh(user)
+
+        yield user
+
+        await session.delete(user)
+        await session.commit()
+
+
 @pytest.mark.anyio
 async def test_get_users_list(user_list):
     async with AsyncClient(
