@@ -423,6 +423,11 @@ async def test_reset_password(user):
     response_json = response.json()
     assert response_json["message"] == "If the email is correct, you will find a reset password email in your inbox."
 
+    async with SessionLocal() as session:
+        user_in_db = await session.get(User, user.id)
+        await session.refresh(user_in_db, ["password_reset_token"])
+        assert user_in_db.password_reset_token is not None
+
 
 @pytest.mark.anyio
 async def test_reset_password_invalid_email(user):
@@ -437,3 +442,4 @@ async def test_reset_password_invalid_email(user):
     assert response.status_code == 400
     response_json = response.json()
     assert response_json["detail"] == "Invalid email."
+
