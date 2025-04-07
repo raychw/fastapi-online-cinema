@@ -1,2 +1,6 @@
 .venv
 .idea
+*.db
+alembic/versions
+.env
+__pycache__

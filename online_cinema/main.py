@@ -1,7 +1,16 @@
 from fastapi import FastAPI
 
-app = FastAPI()
+from online_cinema.routers import accounts
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Online Cinema API."}
+app = FastAPI(
+    title="Online Cinema API",
+    description="API for managing an Online Cinema Application.",
+)
+
+api_version_prefix = "/api/v1"
+
+app.include_router(
+    accounts.router,
+    prefix=f"{api_version_prefix}/accounts",
+    tags=["Accounts"]
+)
