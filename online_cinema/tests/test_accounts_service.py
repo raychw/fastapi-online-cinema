@@ -29,6 +29,30 @@ async def user_list():
                 group_id=1,
                 _hashed_password="hashedpassword2"
             ),
+            User(
+                id=3,
+                email="charlie@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword3"
+            ),
+            User(
+                id=4,
+                email="dave@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword4"
+            ),
+            User(
+                id=5,
+                email="eve@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword5"
+            ),
+            User(
+                id=6,
+                email="frank@example.com",
+                group_id=1,
+                _hashed_password="hashedpassword6"
+            ),
         ]
         session.add_all(users)
         await session.commit()
@@ -123,16 +147,27 @@ async def test_get_users_list(user_list):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        response = await ac.get("api/v1/accounts/")
+        response = await ac.get("api/v1/accounts/?limit=100")
     assert response.status_code == 200
     response_json = response.json()
     assert len(response_json) == len(user_list)
     for user in user_list:
         assert any(
-            u["id"] == user.id
-            and u["email"] == user.email
+            u["id"] == user.id and u["email"] == user.email
             for u in response_json
         )
+
+
+@pytest.mark.anyio
+async def test_get_paginated_users_list(user_list):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("api/v1/accounts/?limit=1&offset=2")
+    assert response.status_code == 200
+    response_json = response.json()
+    assert len(response_json) == 1
+    assert user_list[2].id == response_json[0]["id"]
 
 
 @pytest.mark.anyio
