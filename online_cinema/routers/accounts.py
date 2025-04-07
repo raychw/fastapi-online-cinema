@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,7 +19,6 @@ from online_cinema.security.utils import (
 )
 from online_cinema.accounts.crud import (
     get_user_by_id,
-    get_list_of_users,
     get_user_by_email,
     create_user,
 )
@@ -724,7 +722,7 @@ async def change_password(
     "/",
     response_model=List[UserAccountResponseSchema],
     summary="Get all users",
-    description="Get a list of all users.",
+    description="Get a list of all users (paginated).",
     status_code=status.HTTP_200_OK,
     responses={
         500: {
@@ -742,14 +740,18 @@ async def change_password(
     }
 )
 async def get_users(
-        db: AsyncSession = Depends(get_db),
+    limit: int = Query(5, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
 ):
     """
-    Get all users list.
+    Get a paginated list of users.
     """
-
     try:
-        users = await get_list_of_users(db)
+        stmt = select(UserModel).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        users = result.scalars().all()
+
         return [
             UserAccountResponseSchema.model_validate(user) for user in users
         ]
