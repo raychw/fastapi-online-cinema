@@ -1,15 +1,28 @@
+from typing import List
 from fastapi import APIRouter, Query, Depends
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
+from starlette.exceptions import HTTPException
 
 from online_cinema.database import get_db
+from online_cinema.movies.crud import (
+    get_movies_list,
+    get_movie_by_id,
+)
+from online_cinema.movies.schemas import (
+    MovieBaseSchema,
+    MovieListBaseSchema,
+)
+
 
 router = APIRouter()
 
 
 @router.get(
     "/",
-    # response_model=...,
+    response_model=List[MovieListBaseSchema],
     summary="Get list of existing movies",
     description="Get list of existing movies in the database",
     status_code=status.HTTP_200_OK,
@@ -36,12 +49,21 @@ async def get_movies(
     """
     Get a paginated list of movies.
     """
-    pass
+    movies = await get_movies_list(db, limit, offset)
+
+    try:
+        return movies
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.post(
     "/",
-    # response_model=...,
+    response_model=MovieBaseSchema,
     summary="Create a new movie",
     description="Create a new movie in the database",
     status_code=status.HTTP_201_CREATED,
@@ -81,7 +103,7 @@ async def create_movie():
 
 @router.get(
     "/{movie_id}",
-    # response_model=...,
+    response_model=MovieBaseSchema,
     summary="Get movie by ID",
     description="Get movie by ID from the database",
     status_code=status.HTTP_200_OK,
@@ -119,12 +141,27 @@ async def get_movie(
     """
     Get a movie by its ID.
     """
-    pass
+    movie = await get_movie_by_id(db, movie_id)
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested movie was not found."
+        )
+
+    try:
+        return movie
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.patch(
     "/{movie_id}",
-    # response_model=...,
+    response_model=MovieListBaseSchema,
     summary="Update movie",
     description="Update movie in the database",
     status_code=status.HTTP_200_OK,
@@ -228,7 +265,7 @@ async def delete_movie():
 
 @router.get(
     "/search",
-    # response_model=...,
+    response_model=MovieListBaseSchema,
     summary="Search movies",
     description="Search movies in the database",
     status_code=status.HTTP_200_OK,
