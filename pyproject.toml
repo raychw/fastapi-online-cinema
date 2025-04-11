@@ -21,6 +21,7 @@ dependencies = [
     "cryptography (>=44.0.2,<45.0.0)",
     "python-dotenv (>=1.0.1,<2.0.0)",
     "aiosqlite (>=0.21.0,<0.22.0)",
+    "uuid (>=1.30,<2.0)",
 ]
 
 
