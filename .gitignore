@@ -2,5 +2,7 @@
 .idea
 *.db
 alembic/versions
+alembic/env.py
 .env
 __pycache__
+.coverage
