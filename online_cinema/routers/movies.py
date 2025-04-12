@@ -1,6 +1,5 @@
 from typing import List
 from fastapi import APIRouter, Query, Depends
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status

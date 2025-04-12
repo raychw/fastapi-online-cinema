@@ -1,5 +1,4 @@
 import decimal
-import uuid
 from typing import Optional, List
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import (
