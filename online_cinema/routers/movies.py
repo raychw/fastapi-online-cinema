@@ -5,14 +5,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from online_cinema.accounts.models import UserModel
+from security.utils import require_group
 from online_cinema.database import get_db
 from online_cinema.movies.crud import (
     get_movies_list,
+    create_new_movie,
     get_movie_by_id,
+    remove_movie,
+    update_movie,
 )
 from online_cinema.movies.schemas import (
     MovieBaseSchema,
     MovieListBaseSchema,
+    MovieCreateRequestSchema,
+    MovieCreateResponseSchema,
+    MessageResponseSchema
 )
 
 
@@ -62,7 +70,7 @@ async def get_movies(
 
 @router.post(
     "/",
-    response_model=MovieBaseSchema,
+    response_model=MovieCreateResponseSchema,
     summary="Create a new movie",
     description="Create a new movie in the database",
     status_code=status.HTTP_201_CREATED,
@@ -93,11 +101,29 @@ async def get_movies(
         },
     }
 )
-async def create_movie():
+async def create_movie(
+    movie_data: MovieCreateRequestSchema,
+    # user: UserModel = Depends(require_group(["admin"])),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Create a new movie if you have the required permissions.
     """
-    pass
+    movie = await create_new_movie(db, movie_data.model_dump())
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The request was invalid or cannot be served."
+        )
+    try:
+        return MovieCreateResponseSchema.model_validate(movie)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.get(
@@ -203,11 +229,36 @@ async def get_movie(
         },
     }
 )
-async def update_movie():
+async def patch_movie(
+        movie_id: int,
+        movie_data: MovieCreateRequestSchema,
+        # user: UserModel = Depends(require_group(["admin"])),
+        db: AsyncSession = Depends(get_db),
+):
     """
     Update a movie if you have the required permissions.
     """
-    pass
+    existing_movie = await get_movie_by_id(db, movie_id)
+
+    if not existing_movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested movie was not found."
+        )
+    try:
+        updated_movie = await update_movie(
+            db,
+            movie_id,
+            movie_data.model_dump()
+        )
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+    else:
+        return MovieListBaseSchema.model_validate(updated_movie)
 
 
 @router.delete(
@@ -255,11 +306,32 @@ async def update_movie():
         },
     }
 )
-async def delete_movie():
+async def delete_movie(
+        movie_id: int,
+        # user: UserModel = Depends(require_group(["admin"])),
+        db: AsyncSession = Depends(get_db),
+):
     """"
     Delete a movie if you have the required permissions.
     """
-    pass
+    movie = await get_movie_by_id(db, movie_id)
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested movie was not found."
+        )
+
+    try:
+        await remove_movie(db, movie_id)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+    else:
+        return {"detail": "Movie deleted successfully."}
 
 
 @router.get(
@@ -292,7 +364,7 @@ async def search_movies():
 
 @router.post(
     "/{movie_id}/like",
-    # response_model=...,
+    response_model=MessageResponseSchema,
     summary="Like a movie",
     description="Like a movie in the database",
     status_code=status.HTTP_200_OK,
@@ -323,16 +395,37 @@ async def search_movies():
         },
     }
 )
-async def like_movie():
+async def like_movie(
+        movie_id: int,
+        db: AsyncSession = Depends(get_db),
+):
     """
     Like a movie and change votes count.
     """
-    pass
+    movie = await get_movie_by_id(db, movie_id)
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested movie was not found."
+        )
+    try:
+        movie.votes += 1
+        await db.commit()
+        await db.refresh(movie)
+
+        return {"message": "Movie liked successfully."}
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.post(
     "/{movie_id}/dislike",
-    # response_model=...,
+    response_model=MessageResponseSchema,
     summary="Dislike a movie",
     description="Dislike a movie in the database",
     status_code=status.HTTP_200_OK,
@@ -363,11 +456,32 @@ async def like_movie():
         },
     }
 )
-async def dislike_movie():
+async def dislike_movie(
+        movie_id: int,
+        db: AsyncSession = Depends(get_db),
+):
     """
     Dislike a movie and change votes count.
     """
-    pass
+    movie = await get_movie_by_id(db, movie_id)
+
+    if not movie:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested movie was not found."
+        )
+    try:
+        movie.votes -= 1
+        await db.commit()
+        await db.refresh(movie)
+
+        return {"message": "Movie disliked successfully."}
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.post(
