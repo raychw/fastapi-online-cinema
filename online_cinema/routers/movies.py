@@ -263,7 +263,6 @@ async def patch_movie(
 
 @router.delete(
     "/{movie_id}",
-    # response_model=...,
     summary="Delete movie",
     description="Delete movie from the database",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -330,8 +329,6 @@ async def delete_movie(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-    else:
-        return {"detail": "Movie deleted successfully."}
 
 
 @router.get(
@@ -482,55 +479,3 @@ async def dislike_movie(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
-
-@router.post(
-    "/{movie_id}/rate",
-    # response_model=...,
-    summary="Rate a movie",
-    description="Rate a movie in the database",
-    status_code=status.HTTP_200_OK,
-    responses={
-        400: {
-            "description":
-                "Bad Request - "
-                "The request was invalid or cannot be served.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "The request was invalid or cannot be served."
-                    }
-                }
-            },
-        },
-        404: {
-            "description":
-                "Not Found - "
-                "The requested movie was not found.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "The requested movie was not found."
-                    }
-                }
-            },
-        },
-        500: {
-            "description":
-                "Internal Server Error - "
-                "An error occurred during rating movie.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during rating movie."
-                    }
-                }
-            },
-        },
-    }
-)
-async def rate_movie():
-    """
-    Rate a movie on a 10-point scale.
-    """
-    pass
