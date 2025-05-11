@@ -647,18 +647,6 @@ async def patch_star(
                 }
             },
         },
-        409: {
-            "description":
-                "Conflict - "
-                "The requested movie was already purchased.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "The requested movie was already purchased."
-                    }
-                }
-            },
-        },
         500: {
             "description":
                 "Internal Server Error - "
