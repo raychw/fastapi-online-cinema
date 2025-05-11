@@ -1,15 +1,16 @@
 from typing import List, Literal
 from fastapi import APIRouter, Query, Depends
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, select, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from starlette import status
 from starlette.exceptions import HTTPException
 
 from online_cinema.accounts.models import UserModel
 from security.utils import require_group
 from online_cinema.database import get_db
-from online_cinema.movies import Movie
+from online_cinema.movies import Movie, Star, Director
 from online_cinema.movies.crud import (
     get_movies_list,
     create_new_movie,
@@ -214,11 +215,42 @@ async def sort_movies(
         },
     }
 )
-async def search_movies():
+async def search_movies(
+    query: str = Query(..., description="Search term to filter movies by title, description, actors, or directors"),
+    limit: int = Query(5, ge=1, le=100, description="Limit number of movies returned"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Search for movies by title, description, actors or directors.
+    Search for movies by title, description, actors, or directors.
     """
-    pass
+    try:
+        stmt = select(Movie)
+
+        search_value = f"%{query}%"
+
+        stmt = stmt.outerjoin(Movie.stars).outerjoin(Movie.directors).filter(
+            or_(
+                Movie.name.ilike(search_value),
+                Movie.description.ilike(search_value),
+                Star.name.ilike(search_value),
+                Director.name.ilike(search_value)
+            )
+        )
+
+        stmt = stmt.limit(limit).offset(offset)
+
+
+        result = await db.execute(stmt)
+        movies = result.scalars().all()
+
+        return movies
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during searching movies: {str(e)}"
+        )
 
 
 @router.get(
