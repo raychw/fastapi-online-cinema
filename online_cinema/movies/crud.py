@@ -1,7 +1,7 @@
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from online_cinema.movies.models import (
+from online_cinema.movies import (
     Movie,
     Genre,
     Star,
@@ -10,21 +10,20 @@ from online_cinema.movies.models import (
 
 async def get_movies_list(
     db: AsyncSession,
-    year: int | None = None,
-    imdb_min: float | None = None,
-    imdb_max: float | None = None,
     limit: int = 5,
     offset: int = 0,
+    filters: dict | None = None,
 ):
     stmt = select(Movie)
 
     conditions = []
-    if year is not None:
-        conditions.append(Movie.year == year)
-    if imdb_min is not None:
-        conditions.append(Movie.imdb >= imdb_min)
-    if imdb_max is not None:
-        conditions.append(Movie.imdb <= imdb_max)
+    if filters:
+        if "year" in filters:
+            conditions.append(Movie.year == filters["year"])
+        if "imdb_min" in filters:
+            conditions.append(Movie.imdb >= filters["imdb_min"])
+        if "imdb_max" in filters:
+            conditions.append(Movie.imdb <= filters["imdb_max"])
 
     if conditions:
         stmt = stmt.where(and_(*conditions))

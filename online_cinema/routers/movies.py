@@ -1,5 +1,6 @@
-from typing import List
+from typing import List, Literal
 from fastapi import APIRouter, Query, Depends
+from sqlalchemy import asc, desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
@@ -8,6 +9,7 @@ from starlette.exceptions import HTTPException
 from online_cinema.accounts.models import UserModel
 from security.utils import require_group
 from online_cinema.database import get_db
+from online_cinema.movies import Movie
 from online_cinema.movies.crud import (
     get_movies_list,
     create_new_movie,
@@ -72,7 +74,7 @@ async def get_movies(
     """
     Get a paginated list of movies.
     """
-    movies = await get_movies_list(db, limit, offset)
+    movies = await get_movies_list(db, limit, offset, filters={})
 
     try:
         return movies
@@ -106,16 +108,28 @@ async def get_movies(
     }
 )
 async def filter_movies(
-        year: int | None = Query(None, description="Filter by release year"),
-        imdb_min: float | None = Query(None, ge=0, le=10, description="Minimum IMDB rating"),
-        imdb_max: float | None = Query(None, ge=0, le=10, description="Maximum IMDB rating"),
-        db: AsyncSession = Depends(get_db),
+    year: int | None = Query(None, description="Filter by release year"),
+    imdb_min: float | None = Query(None, ge=0, le=10, description="Minimum IMDB rating"),
+    imdb_max: float | None = Query(None, ge=0, le=10, description="Maximum IMDB rating"),
+    limit: int = Query(5, ge=1, le=100, description="Limit number of movies returned"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Filter movies in the database by various criteria: release year, IMDB rating, ...
+    Supports pagination with limit and offset.
     """
+
+    filters = {}
+    if year is not None:
+        filters["year"] = year
+    if imdb_min is not None:
+        filters["imdb_min"] = imdb_min
+    if imdb_max is not None:
+        filters["imdb_max"] = imdb_max
+
     try:
-        movies = await get_movies_list(db, year=year, imdb_min=imdb_min, imdb_max=imdb_max)
+        movies = await get_movies_list(db, filters=filters, limit=limit, offset=offset)
         return movies
     except SQLAlchemyError as e:
         await db.rollback()
@@ -146,11 +160,29 @@ async def filter_movies(
         },
     }
 )
-async def sort_movies():
+async def sort_movies(
+        sort_by: Literal["price", "year", "imdb"] = Query(...),
+        sort_order: Literal["asc", "desc"] = Query("asc"),
+        db: AsyncSession = Depends(get_db),
+):
     """
     Sort movies in the database by different attributes: price, release date, ...
     """
-    pass
+    sort_column = getattr(Movie, sort_by)
+    order_func = asc if sort_order == "asc" else desc
+
+    stmt = select(Movie).order_by(order_func(sort_column)).limit(5)
+
+    try:
+        result = await db.execute(stmt)
+        movies = result.scalars().all()
+        return movies
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during sorting movies."
+        )
 
 
 @router.get(
