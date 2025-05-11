@@ -39,6 +39,15 @@ class MovieListBaseSchema(BaseModel):
     }
 
 
+class GenreListBaseSchema(BaseModel):
+    id: int
+    name: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
 class MovieCreateRequestSchema(BaseModel):
     uuid: str
     name: str
@@ -57,7 +66,19 @@ class MovieCreateRequestSchema(BaseModel):
     }
 
 
+class GenreCreateRequestSchema(BaseModel):
+    name: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
 class MovieCreateResponseSchema(MovieBaseSchema):
+    pass
+
+
+class GenreCreateResponseSchema(GenreListBaseSchema):
     pass
 
 

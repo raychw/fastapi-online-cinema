@@ -1,7 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from online_cinema.movies.models import Movie
+from online_cinema.movies.models import (
+    Movie,
+    Genre,
+    Star,
+)
 
 
 async def get_movies_list(
@@ -18,8 +22,28 @@ async def get_movies_list(
     return result.scalars().all()
 
 
+async def get_genres_list(
+    db: AsyncSession,
+    limit: int = 5,
+    offset: int = 0
+):
+    stmt = (
+        select(Genre)
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 async def get_movie_by_id(db: AsyncSession, movie_id: int):
     stmt = select(Movie).where(Movie.id == movie_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def get_genre_by_id(db: AsyncSession, genre_id: int):
+    stmt = select(Genre).where(Genre.id == genre_id)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -45,6 +69,17 @@ async def create_new_movie(db: AsyncSession, movie_data: dict):
     return new_movie
 
 
+async def create_new_genre(db: AsyncSession, genre_data: dict):
+    new_genre = Genre(
+        name=genre_data["name"],
+    )
+
+    db.add(new_genre)
+    await db.commit()
+    await db.refresh(new_genre)
+    return new_genre
+
+
 async def update_movie(db: AsyncSession, movie_id: int, movie_data: dict):
     stmt = select(Movie).where(Movie.id == movie_id)
     result = await db.execute(stmt)
@@ -61,6 +96,22 @@ async def update_movie(db: AsyncSession, movie_id: int, movie_data: dict):
     return movie
 
 
+async def update_genre(db: AsyncSession, genre_id: int, genre_data: dict):
+    stmt = select(Genre).where(Genre.id == genre_id)
+    result = await db.execute(stmt)
+    genre = result.scalars().first()
+
+    if not genre:
+        return None
+
+    for key, value in genre_data.items():
+        setattr(genre, key, value)
+
+    await db.commit()
+    await db.refresh(genre)
+    return genre
+
+
 async def remove_movie(db: AsyncSession, movie_id: int):
     stmt = select(Movie).where(Movie.id == movie_id)
     result = await db.execute(stmt)
@@ -72,3 +123,16 @@ async def remove_movie(db: AsyncSession, movie_id: int):
     await db.delete(movie)
     await db.commit()
     return movie
+
+
+async def remove_genre(db: AsyncSession, genre_id: int):
+    stmt = select(Genre).where(Genre.id == genre_id)
+    result = await db.execute(stmt)
+    genre = result.scalars().first()
+
+    if not genre:
+        return None
+
+    await db.delete(genre)
+    await db.commit()
+    return genre
