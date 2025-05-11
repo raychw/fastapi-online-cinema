@@ -161,13 +161,21 @@ async def filter_movies(
     }
 )
 async def sort_movies(
-        sort_by: Literal["price", "year", "imdb"] = Query(...),
+        sort_by: Literal[
+            "year",
+            "time",
+            "imdb",
+            "votes",
+            "meta_score",
+            "price",
+        ] = Query(...),
         sort_order: Literal["asc", "desc"] = Query("asc"),
         db: AsyncSession = Depends(get_db),
 ):
     """
     Sort movies in the database by different attributes: price, release date, ...
     """
+
     sort_column = getattr(Movie, sort_by)
     order_func = asc if sort_order == "asc" else desc
 
