@@ -19,6 +19,11 @@ from online_cinema.movies.crud import (
     get_genre_by_id,
     update_genre,
     remove_genre,
+    get_stars_list,
+    create_new_star,
+    get_star_by_id,
+    update_star,
+    remove_star,
 )
 from online_cinema.movies.schemas import (
     MovieBaseSchema,
@@ -29,6 +34,9 @@ from online_cinema.movies.schemas import (
     GenreListBaseSchema,
     GenreCreateRequestSchema,
     GenreCreateResponseSchema,
+    StarListBaseSchema,
+    StarCreateRequestSchema,
+    StarCreateResponseSchema,
 )
 
 
@@ -109,6 +117,47 @@ async def get_genres(
 
     try:
         return genres
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.get(
+    "/stars",
+    response_model=List[StarListBaseSchema],
+    summary="Get list of existing stars",
+    description="Get list of existing stars in the database",
+    status_code=status.HTTP_200_OK,
+    responses={
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during fetching stars.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during fetching stars."
+                    }
+                }
+            },
+        },
+    }
+)
+async def get_stars(
+    limit: int = Query(5, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get a paginated list of stars.
+    """
+    stars = await get_stars_list(db, limit, offset)
+
+    try:
+        return stars
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -225,6 +274,64 @@ async def create_genre(
         )
     try:
         return GenreCreateResponseSchema.model_validate(genre)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.post(
+    "/stars",
+    response_model=StarCreateResponseSchema,
+    summary="Create a new star",
+    description="Create a new star in the database",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {
+            "description":
+                "Bad Request - "
+                "The request was invalid or cannot be served.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "The request was invalid or cannot be served."
+                    }
+                }
+            },
+        },
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during creating star.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during creating star."
+                    }
+                }
+            },
+        },
+    }
+)
+async def create_star(
+    star_data: StarCreateRequestSchema,
+    # user: UserModel = Depends(require_group(["admin"])),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a new star if you have the required permissions.
+    """
+    star = await create_new_star(db, star_data.model_dump())
+
+    if not star:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The request was invalid or cannot be served."
+        )
+    try:
+        return StarCreateResponseSchema.model_validate(star)
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
@@ -445,6 +552,83 @@ async def patch_genre(
         return GenreListBaseSchema.model_validate(updated_genre)
 
 
+@router.patch(
+    "/stars/{star_id}",
+    response_model=StarListBaseSchema,
+    summary="Update star",
+    description="Update star in the database",
+    status_code=status.HTTP_200_OK,
+    responses={
+        400: {
+            "description":
+                "Bad Request - "
+                "The request was invalid or cannot be served.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "The request was invalid or cannot be served."
+                    }
+                }
+            },
+        },
+        404: {
+            "description":
+                "Not Found - "
+                "The requested star was not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "The requested star was not found."
+                    }
+                }
+            },
+        },
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during updating star.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during updating star."
+                    }
+                }
+            },
+        },
+    }
+)
+async def patch_star(
+        star_id: int,
+        star_data: StarCreateRequestSchema,
+        # user: UserModel = Depends(require_group(["admin"])),
+        db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a star if you have the required permissions.
+    """
+    existing_star = await get_star_by_id(db, star_id)
+
+    if not existing_star:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested star was not found."
+        )
+    try:
+        updated_star = await update_star(
+            db,
+            star_id,
+            star_data.model_dump()
+        )
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+    else:
+        return StarListBaseSchema.model_validate(updated_star)
+
+
 @router.delete(
     "/{movie_id}",
     summary="Delete movie",
@@ -565,6 +749,64 @@ async def delete_genre(
 
     try:
         await remove_genre(db, genre_id)
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
+@router.delete(
+    "/stars/{star_id}",
+    summary="Delete star",
+    description="Delete star from the database",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {
+            "description":
+                "Not Found - "
+                "The requested star was not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "The requested star was not found."
+                    }
+                }
+            },
+        },
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during deleting star.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during deleting star."
+                    }
+                }
+            },
+        },
+    }
+)
+async def delete_star(
+        star_id: int,
+        # user: UserModel = Depends(require_group(["admin"])),
+        db: AsyncSession = Depends(get_db),
+):
+    """"
+    Delete a star if you have the required permissions.
+    """
+    star = await get_star_by_id(db, star_id)
+
+    if not star:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The requested star was not found."
+        )
+
+    try:
+        await remove_star(db, star_id)
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(

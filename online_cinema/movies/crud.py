@@ -36,6 +36,20 @@ async def get_genres_list(
     return result.scalars().all()
 
 
+async def get_stars_list(
+    db: AsyncSession,
+    limit: int = 5,
+    offset: int = 0
+):
+    stmt = (
+        select(Star)
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 async def get_movie_by_id(db: AsyncSession, movie_id: int):
     stmt = select(Movie).where(Movie.id == movie_id)
     result = await db.execute(stmt)
@@ -44,6 +58,12 @@ async def get_movie_by_id(db: AsyncSession, movie_id: int):
 
 async def get_genre_by_id(db: AsyncSession, genre_id: int):
     stmt = select(Genre).where(Genre.id == genre_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def get_star_by_id(db: AsyncSession, star_id: int):
+    stmt = select(Star).where(Star.id == star_id)
     result = await db.execute(stmt)
     return result.scalars().first()
 
@@ -80,6 +100,17 @@ async def create_new_genre(db: AsyncSession, genre_data: dict):
     return new_genre
 
 
+async def create_new_star(db: AsyncSession, star_data: dict):
+    new_star = Star(
+        name=star_data["name"],
+    )
+
+    db.add(new_star)
+    await db.commit()
+    await db.refresh(new_star)
+    return new_star
+
+
 async def update_movie(db: AsyncSession, movie_id: int, movie_data: dict):
     stmt = select(Movie).where(Movie.id == movie_id)
     result = await db.execute(stmt)
@@ -112,6 +143,22 @@ async def update_genre(db: AsyncSession, genre_id: int, genre_data: dict):
     return genre
 
 
+async def update_star(db: AsyncSession, star_id: int, star_data: dict):
+    stmt = select(Star).where(Star.id == star_id)
+    result = await db.execute(stmt)
+    star = result.scalars().first()
+
+    if not star:
+        return None
+
+    for key, value in star_data.items():
+        setattr(star, key, value)
+
+    await db.commit()
+    await db.refresh(star)
+    return star
+
+
 async def remove_movie(db: AsyncSession, movie_id: int):
     stmt = select(Movie).where(Movie.id == movie_id)
     result = await db.execute(stmt)
@@ -136,3 +183,16 @@ async def remove_genre(db: AsyncSession, genre_id: int):
     await db.delete(genre)
     await db.commit()
     return genre
+
+
+async def remove_star(db: AsyncSession, star_id: int):
+    stmt = select(Star).where(Star.id == star_id)
+    result = await db.execute(stmt)
+    star = result.scalars().first()
+
+    if not star:
+        return None
+
+    await db.delete(star)
+    await db.commit()
+    return star

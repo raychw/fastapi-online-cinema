@@ -48,6 +48,10 @@ class GenreListBaseSchema(BaseModel):
     }
 
 
+class StarListBaseSchema(GenreListBaseSchema):
+    pass
+
+
 class MovieCreateRequestSchema(BaseModel):
     uuid: str
     name: str
@@ -74,11 +78,19 @@ class GenreCreateRequestSchema(BaseModel):
     }
 
 
+class StarCreateRequestSchema(GenreCreateRequestSchema):
+    pass
+
+
 class MovieCreateResponseSchema(MovieBaseSchema):
     pass
 
 
 class GenreCreateResponseSchema(GenreListBaseSchema):
+    pass
+
+
+class StarCreateResponseSchema(StarListBaseSchema):
     pass
 
 
