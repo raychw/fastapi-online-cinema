@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from online_cinema.movies.models import (
@@ -10,14 +10,27 @@ from online_cinema.movies.models import (
 
 async def get_movies_list(
     db: AsyncSession,
+    year: int | None = None,
+    imdb_min: float | None = None,
+    imdb_max: float | None = None,
     limit: int = 5,
-    offset: int = 0
+    offset: int = 0,
 ):
-    stmt = (
-        select(Movie)
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = select(Movie)
+
+    conditions = []
+    if year is not None:
+        conditions.append(Movie.year == year)
+    if imdb_min is not None:
+        conditions.append(Movie.imdb >= imdb_min)
+    if imdb_max is not None:
+        conditions.append(Movie.imdb <= imdb_max)
+
+    if conditions:
+        stmt = stmt.where(and_(*conditions))
+
+    stmt = stmt.limit(limit).offset(offset)
+
     result = await db.execute(stmt)
     return result.scalars().all()
 

@@ -85,6 +85,103 @@ async def get_movies(
 
 
 @router.get(
+    "/filter",
+    response_model=List[MovieListBaseSchema],
+    summary="Filter movies",
+    description="Filter movies in the database by various criteria: release year, IMDB rating, ...",
+    status_code=status.HTTP_200_OK,
+    responses={
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during filtering movies.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during filtering movies."
+                    }
+                }
+            },
+        },
+    }
+)
+async def filter_movies(
+        year: int | None = Query(None, description="Filter by release year"),
+        imdb_min: float | None = Query(None, ge=0, le=10, description="Minimum IMDB rating"),
+        imdb_max: float | None = Query(None, ge=0, le=10, description="Maximum IMDB rating"),
+        db: AsyncSession = Depends(get_db),
+):
+    """
+    Filter movies in the database by various criteria: release year, IMDB rating, ...
+    """
+    try:
+        movies = await get_movies_list(db, year=year, imdb_min=imdb_min, imdb_max=imdb_max)
+        return movies
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during filtering movies."
+        )
+
+
+@router.get(
+    "/sort",
+    response_model=List[MovieListBaseSchema],
+    summary="Sort movies",
+    description="Sort movies in the database by different attributes.",
+    status_code=status.HTTP_200_OK,
+    responses={
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during sorting movies.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during sorting movies."
+                    }
+                }
+            },
+        },
+    }
+)
+async def sort_movies():
+    """
+    Sort movies in the database by different attributes: price, release date, ...
+    """
+    pass
+
+
+@router.get(
+    "/search",
+    response_model=List[MovieListBaseSchema],
+    summary="Search movies",
+    description="Search movies in the database",
+    status_code=status.HTTP_200_OK,
+    responses={
+        500: {
+            "description":
+                "Internal Server Error - "
+                "An error occurred during searching movies.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during searching movies."
+                    }
+                }
+            },
+        },
+    }
+)
+async def search_movies():
+    """
+    Search for movies by title, description, actors or directors.
+    """
+    pass
+
+
+@router.get(
     "/genres",
     response_model=List[GenreListBaseSchema],
     summary="Get list of existing genres",
@@ -801,34 +898,6 @@ async def delete_star(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
-
-@router.get(
-    "/search",
-    response_model=MovieListBaseSchema,
-    summary="Search movies",
-    description="Search movies in the database",
-    status_code=status.HTTP_200_OK,
-    responses={
-        500: {
-            "description":
-                "Internal Server Error - "
-                "An error occurred during searching movies.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during searching movies."
-                    }
-                }
-            },
-        },
-    }
-)
-async def search_movies():
-    """
-    Search for movies by title, description, actors or directors.
-    """
-    pass
 
 
 @router.post(
